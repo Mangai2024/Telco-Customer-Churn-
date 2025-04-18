@@ -1,1 +1,257 @@
+Useful for - Telecom companies to reduce customer loss.
+
+
+Important Libraries
+
+import pandas as pd
+import numpy as np 
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+#Load the dataset
+df=pd.read_csv("/content/telco.csv")
+
+df.info()
+
+#list of columns to keep
+columns_to_keep = [
+    'Gender', 'Age', 'Under 30', 'Senior Citizen', 'Married', 'Dependents',
+    'Number of Dependents', 'Country', 'City', 'Tenure in Months', 'Phone Service',
+    'Multiple Lines', 'Internet Service', 'Internet Type', 'Avg Monthly GB Download',
+    'Online Security', 'Online Backup', 'Device Protection Plan', 'Premium Tech Support',
+    'Streaming TV', 'Streaming Movies', 'Streaming Music', 'Unlimited Data',
+    'Paperless Billing', 'Churn Label'
+]
+
+# Drop unwanted columns
+df= df[columns_to_keep]
+
+print(df.head())
+
+# Check for missing values
+df.isnull().sum()
+
+# See what Internet Service is for rows where Internet Type is missing
+df[df['Internet Type'].isna()]['Internet Service'].value_counts()
+
+
+df['Internet Type'] =df['Internet Type'].fillna('No Internet')
+
+EDA Process-Check how many customers churned vs stayed.
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+plt.figure(figsize=(18, 12))
+
+#1. Tenure vs Churn
+plt.subplot(2,3,1)
+sns.boxplot(data=df, x='Churn Label', y='Tenure in Months', palette='Set2')
+plt.title('Tenure vs Churn')
+
+#2. Monthly GB Download vs Churn
+plt.subplot(2,3,2)
+sns.boxplot(data=df, x='Churn Label', y='Avg Monthly GB Download', palette='Pastel1')
+plt.title('Monthly GB Download vs Churn')
+
+print(df.columns)
+
+#3. Churn by Internet Type
+plt.subplot(2, 3, 3)
+sns.countplot(data=df, x='Internet Type', hue='Churn Label', palette='cool')
+plt.title('Churn by Internet Type')
+plt.xticks(rotation=45)
+
+
+#4.Churn by Premium Tech support
+plt.subplot (2,3,4)
+sns.countplot(data=df, x='Premium Tech Support', hue='Churn Label', palette='Set1')
+plt.title('Churn by Premium Tech Support')
+
+# 5. Churn by Streaming TV
+plt.subplot(2, 3, 5)
+sns.countplot(data=df, x='Streaming TV', hue='Churn Label', palette='Accent')
+plt.title('Churn by Streaming TV')
+
+plt.tight_layout()
+plt.show()
+
+
+ Data Preprocessing (for model building)
+
+#Label encoding for categorical variables
+from sklearn. preprocessing import LabelEncoder
+
+
+le=LabelEncoder()
+for col in df.select_dtypes(include='object').columns:
+  df[col] =le.fit_transform(df[col])
+
+ Feature & target split
+
+x = df.drop('Churn Label',axis=1)
+y = df['Churn Label']
+
+df['Churn Label'].value_counts()
+
+df=df[df['Churn Label'] !=2]
+
+df['Churn Label'].value_counts()
+
+Train-test split
+
+from sklearn.model_selection  import train_test_split
+
+x_train, x_test, y_train, y_test=train_test_split(x,y, test_size=0.2, random_state=42)
+
+Model Building- RandomForest Classifier
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+model = RandomForestClassifier(random_state=42)
+model.fit(x_train, y_train)
+
+y_pred = model.predict(x_test)
+
+Model Evaluation
+
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print(classification_report(y_test, y_pred))
+sns.heatmap(confusion_matrix(y_test, y_pred), annot=True,  fmt='d', cmap='Blues')
+plt.title("Confusion Matrix")
+plt.show()
+
+#Check Feature Importance
+
+import pandas as pd
+import seaborn as sns
+import  matplotlib.pyplot as plt
+
+#get feature importances
+importances = model.feature_importances_
+features = x.columns
+
+
+#Create a Dataframe
+importance_df=pd.DataFrame({'Feature': features, 'Importance': importances})
+importance_df.sort_values(by='Importance', ascending=False, inplace=True)
+
+
+#Plot top 10 features
+plt.figure(figsize=(10, 6))
+sns.barplot(x='Importance', y='Feature', data=importance_df.head(10), palette='viridis')
+plt.title('Top 10 Important Features for Predicting Churn')
+plt.xlabel('Importance')
+plt.ylabel('Feature')
+plt.tight_layout()
+plt.show()
+
+Select Top Features
+
+x=df.drop('Churn Label', axis=1)
+y=df['Churn Label']
+
+top_features = importance_df.head(10)['Feature'].tolist()
+x_selected = x[top_features]
+
+
+Re-train Random Forest with top features
+
+from sklearn.ensemble import RandomForestClassifier
+model= RandomForestClassifier(random_state=42)
+model.fit(x_train, y_train)
+
+y_pred = model.predict(x_test)
+
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print(classification_report(y_test, y_pred))
+sns.heatmap(confusion_matrix(y_test, y_pred), annot=True,  fmt='d', cmap='Blues')
+plt.title("Confusion Matrix")
+plt.show()
+
+# Install xgboost if not already installed
+!pip install xgboost
+
+# Import necessary libraries
+import xgboost as xgb
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Define the model
+xgb_model = xgb.XGBClassifier(random_state=42, use_label_encoder=False, eval_metric='mlogloss')
+
+# Train the model
+xgb_model.fit(x_train, y_train)
+
+# Predict
+y_pred_xgb = xgb_model.predict(x_test)
+
+# Evaluate
+print("🎯 Accuracy:", accuracy_score(y_test, y_pred_xgb))
+print("\n📝 Classification Report:\n", classification_report(y_test, y_pred_xgb))
+
+# Confusion Matrix
+plt.figure(figsize=(6, 4))
+sns.heatmap(confusion_matrix(y_test, y_pred_xgb), annot=True, fmt='d', cmap='Blues')
+plt.title("XGBoost - Confusion Matrix")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.show()
+
+
+from sklearn.model_selection import RandomizedSearchCV
+from xgboost import XGBClassifier
+
+# Define the parameter grid
+param_grid = {
+    'n_estimators': [100, 200, 300],
+    'max_depth': [3, 4, 5, 6],
+    'learning_rate': [0.01, 0.05, 0.1, 0.2],
+    'subsample': [0.6, 0.8, 1.0],
+    'colsample_bytree': [0.6, 0.8, 1.0],
+    'gamma': [0, 0.1, 0.3, 0.5],
+    'reg_alpha': [0, 0.01, 0.1],
+    'reg_lambda': [1, 1.5, 2]
+}
+
+# Create base model
+xgb_clf = XGBClassifier(random_state=42, use_label_encoder=False, eval_metric='mlogloss')
+
+# RandomizedSearchCV
+random_search = RandomizedSearchCV(
+    estimator=xgb_clf,
+    param_distributions=param_grid,
+    n_iter=25,  # number of combinations to try
+    cv=3,       # 3-fold cross-validation
+    verbose=2,
+    random_state=42,
+    n_jobs=-1
+)
+
+# Fit on training data
+random_search.fit(x_train, y_train)
+
+# Best model
+best_xgb = random_search.best_estimator_
+
+# Predictions
+y_pred_best = best_xgb.predict(x_test)
+
+# Evaluation
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+print("✨ Best Accuracy:", accuracy_score(y_test, y_pred_best))
+print("\n📝 Best Model Classification Report:\n", classification_report(y_test, y_pred_best))
+
+# Confusion matrix
+plt.figure(figsize=(6, 4))
+sns.heatmap(confusion_matrix(y_test, y_pred_best), annot=True, fmt='d', cmap='Purples')
+plt.title("Best Tuned XGBoost - Confusion Matrix")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.show()
 
